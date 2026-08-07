@@ -89,4 +89,17 @@ grep -Fq 'CatalinaWeb' "$PROBE" \
 grep -Fq 'Primary' "$PROBE" \
     || fail "probe lacks allowlisted Primary profile marker"
 
+# The browser-window identity probe targets Orion's documented toolbar profile
+# switcher. It may inspect semantic attributes/actions but remains read-only.
+grep -Fq -- '--profile-selector-detail' "$PROBE" \
+    || fail "probe lacks targeted browser profile-selector mode"
+grep -Fq 'kAXPopUpButtonRole' "$PROBE" \
+    || fail "profile-selector mode does not inspect AXPopUpButton controls"
+grep -Fq 'profileSemanticMarker' "$PROBE" \
+    || fail "profile-selector output is not restricted to semantic profile markers"
+grep -Fq 'AXUIElementIsAttributeSettable' "$PROBE" \
+    || fail "probe does not report whether profile-selection attributes are safely settable"
+grep -Fq 'kAXSelectedRowsAttribute' "$PROBE" \
+    || fail "probe does not inspect profile-manager selected-row semantics"
+
 echo "PASS: Orion Accessibility probe source contract"
