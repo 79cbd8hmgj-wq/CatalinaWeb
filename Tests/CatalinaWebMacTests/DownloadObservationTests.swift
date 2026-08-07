@@ -34,18 +34,25 @@ final class DownloadObservationTests: XCTestCase {
         XCTAssertEqual(events.events, [.downloadCandidate(url: url, mimeType: "application/zip")])
     }
 
-    func testNilMIMETypeDoesNotFabricateDownloadClassification() {
+    func testResponseWithoutProvidedMIMEUsesOnlyFoundationObservedMIMEForClassification() {
         let events = RecordingDownloadEventRecorder()
         let delegate = makeDelegate(events: events)
+        let url = URL(string: "https://github.com/example/unknown")!
         let response = URLResponse(
-            url: URL(string: "https://github.com/example/unknown")!,
+            url: url,
             mimeType: nil,
             expectedContentLength: -1,
             textEncodingName: nil
         )
 
+        let observedMIMEType = response.mimeType
         XCTAssertEqual(delegate.observeResponseForTesting(response: response, canShowMIMEType: false), .allow)
-        XCTAssertTrue(events.events.isEmpty)
+
+        if let observedMIMEType = observedMIMEType {
+            XCTAssertEqual(events.events, [.downloadCandidate(url: url, mimeType: observedMIMEType)])
+        } else {
+            XCTAssertTrue(events.events.isEmpty)
+        }
     }
 
     func testAttachmentContentDispositionRecordsCandidateEvenWhenMIMEIsDisplayable() {
