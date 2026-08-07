@@ -17,6 +17,18 @@ private func copiedValue(
     return rawValue
 }
 
+private func elementValue(
+    _ element: AXUIElement,
+    attribute: CFString
+) -> AXUIElement? {
+    guard let rawValue = copiedValue(element, attribute: attribute),
+          CFGetTypeID(rawValue) == AXUIElementGetTypeID() else {
+        return nil
+    }
+
+    return unsafeBitCast(rawValue, to: AXUIElement.self)
+}
+
 private func stringValue(
     _ element: AXUIElement,
     attribute: CFString
@@ -188,10 +200,10 @@ print("values=URL-only; webpage/static text is not printed")
 print("")
 
 print("=== MENU BAR ===")
-if let menuBar = copiedValue(
+if let menuBar = elementValue(
     applicationElement,
     attribute: kAXMenuBarAttribute as CFString
-) as? AXUIElement {
+) {
     dumpTree(menuBar, depth: 0, prefix: "")
 } else {
     print("<menu bar unavailable>")
