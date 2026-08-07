@@ -38,6 +38,17 @@ if grep -Fn 'let names = names' "$PROBE" >/tmp/catalinaweb-orion-probe-shadowing
 fi
 rm -f /tmp/catalinaweb-orion-probe-shadowing.txt
 
+# The Catalina 10.15 ApplicationServices SDK does not export kAXWebAreaRole.
+# The runtime role string is still AXWebArea, as verified by the Catalina probe.
+if grep -Fn 'kAXWebAreaRole' "$PROBE" >/tmp/catalinaweb-orion-probe-webarea.txt 2>/dev/null; then
+    cat /tmp/catalinaweb-orion-probe-webarea.txt >&2
+    rm -f /tmp/catalinaweb-orion-probe-webarea.txt
+    fail "probe uses kAXWebAreaRole, which is unavailable in the Catalina SDK"
+fi
+rm -f /tmp/catalinaweb-orion-probe-webarea.txt
+grep -Fq 'AXWebArea' "$PROBE" \
+    || fail "probe lacks the Catalina-verified AXWebArea role string"
+
 grep -Fq 'AXUIElementGetTypeID()' "$PROBE" \
     || fail "probe does not verify CoreFoundation type identity before AXUIElement conversion"
 grep -Fq 'kAXRoleAttribute' "$PROBE" \
