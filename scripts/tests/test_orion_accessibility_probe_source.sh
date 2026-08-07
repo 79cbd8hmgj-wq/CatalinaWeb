@@ -64,4 +64,18 @@ grep -Fq 'AXUIElementCopyActionNames' "$PROBE" \
 grep -Fq 'kAXVisibleChildrenAttribute' "$PROBE" \
     || fail "probe does not inspect AXVisibleChildren for lazy menus"
 
+# Task 6 needs evidence that can distinguish the manually created CatalinaWeb
+# profile window inside Orion's shared process. The diagnostic remains read-only
+# and prints only allowlisted profile-manager text plus URL-bearing values.
+grep -Fq -- '--profile-manager-detail' "$PROBE" \
+    || fail "probe lacks targeted profile-manager/window identity mode"
+grep -Fq 'kAXFocusedWindowAttribute' "$PROBE" \
+    || fail "probe does not inspect the focused Orion window"
+grep -Fq 'kAXMainWindowAttribute' "$PROBE" \
+    || fail "probe does not inspect the main Orion window"
+grep -Fq 'CatalinaWeb' "$PROBE" \
+    || fail "probe lacks allowlisted CatalinaWeb profile marker"
+grep -Fq 'Primary' "$PROBE" \
+    || fail "probe lacks allowlisted Primary profile marker"
+
 echo "PASS: Orion Accessibility probe source contract"
