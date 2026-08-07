@@ -23,8 +23,6 @@ final class DefaultWebViewBuilder: WebViewBuilding {
 }
 
 final class WebViewController: WebViewControlling {
-    private static let chatGPTCompatibilityApplicationName = "Version/15.6 Safari/605.1.15"
-
     private let stateStore: WorkspaceStateStoring
     private let webViewBuilder: WebViewBuilding
     private let navigationPolicy: NavigationPolicy
@@ -155,9 +153,6 @@ final class WebViewController: WebViewControlling {
 
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = WKWebsiteDataStore.default()
-        if workspace == .chatGPT {
-            configuration.applicationNameForUserAgent = Self.chatGPTCompatibilityApplicationName
-        }
 
         let webView = webViewBuilder.makeWebView(configuration: configuration)
         webView.translatesAutoresizingMaskIntoConstraints = false
