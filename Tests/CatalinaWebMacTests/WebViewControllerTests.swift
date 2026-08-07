@@ -20,6 +20,33 @@ final class WebViewControllerTests: XCTestCase {
         XCTAssertTrue(controller.currentWebView === builder.createdViews[0])
     }
 
+    func testChatGPTWebViewUsesExactObservedOrionUserAgent() {
+        let store = RecordingWorkspaceStateStore(state: .initial)
+        let builder = RecordingWebViewBuilder()
+        let controller = WebViewController(stateStore: store, webViewBuilder: builder)
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+
+        controller.start(in: container, workspace: .chatGPT)
+
+        XCTAssertEqual(
+            builder.createdViews[0].customUserAgent,
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15"
+        )
+    }
+
+    func testGitHubWebViewKeepsDefaultUserAgent() {
+        var initial = PersistedWorkspaceState.initial
+        initial.activeWorkspace = .github
+        let store = RecordingWorkspaceStateStore(state: initial)
+        let builder = RecordingWebViewBuilder()
+        let controller = WebViewController(stateStore: store, webViewBuilder: builder)
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+
+        controller.start(in: container, workspace: .github)
+
+        XCTAssertNil(builder.createdViews[0].customUserAgent)
+    }
+
     func testSwitchPersistsCurrentURLBeforeTeardownAndRestoresDestinationURL() {
         let githubURL = URL(string: "https://github.com/79cbd8hmgj-wq/CatalinaWeb/issues")!
         var initial = PersistedWorkspaceState.initial
