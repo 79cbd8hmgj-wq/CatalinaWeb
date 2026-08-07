@@ -15,28 +15,13 @@ fail() {
 [ -f "$WEB_CONTROLLER" ] || fail "WebViewController.swift missing"
 [ -f "$UI_DELEGATE" ] || fail "WebViewUIDelegate.swift missing"
 
-PROHIBITED='WKUserScript|applicationNameForUserAgent|setValue.*forKey.*WebKit|allowsAnyHTTPSCertificate|SecTrustSetExceptions|renice|setpriority|sudo|AuthorizationExecuteWithPrivileges|launchctl|csrutil'
+PROHIBITED='WKUserScript|customUserAgent|setValue.*forKey.*WebKit|allowsAnyHTTPSCertificate|SecTrustSetExceptions|renice|setpriority|sudo|AuthorizationExecuteWithPrivileges|launchctl|csrutil'
 
 if grep -RInE "$PROHIBITED" "$SOURCES" >/tmp/catalinaweb-security-prohibited.txt 2>/dev/null; then
     cat /tmp/catalinaweb-security-prohibited.txt
     fail "prohibited production implementation pattern found"
 fi
 rm -f /tmp/catalinaweb-security-prohibited.txt
-
-CUSTOM_UA_FILES=$(grep -RIlF 'customUserAgent' "$SOURCES" 2>/dev/null || true)
-[ "$CUSTOM_UA_FILES" = "$WEB_CONTROLLER" ] \
-    || fail "customUserAgent is permitted only in WebViewController.swift"
-
-CUSTOM_UA_COUNT=$(grep -Fc 'customUserAgent' "$WEB_CONTROLLER" | tr -d ' ')
-[ "$CUSTOM_UA_COUNT" -eq 1 ] \
-    || fail "expected exactly one customUserAgent assignment"
-
-grep -Fq 'if workspace == .chatGPT {' "$WEB_CONTROLLER" \
-    || fail "ChatGPT-only user-agent scope is missing"
-grep -Fq 'webView.customUserAgent = Self.chatGPTCompatibilityUserAgent' "$WEB_CONTROLLER" \
-    || fail "ChatGPT compatibility user-agent assignment is missing"
-grep -Fq 'Version/26.0 Safari/605.1.15' "$WEB_CONTROLLER" \
-    || fail "observed Orion compatibility user-agent is missing"
 
 grep -Fq 'WKWebsiteDataStore.default()' "$WEB_CONTROLLER" \
     || fail "persistent default WebKit website data store is not explicit"
