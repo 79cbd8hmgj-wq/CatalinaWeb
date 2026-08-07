@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 @testable import CatalinaWebCore
 
@@ -19,16 +20,33 @@ final class OrionSetupStateTests: XCTestCase {
         XCTAssertEqual(decoded, stages)
     }
 
-    func testProfileIdentityRoundTripsExactly() throws {
+    func testProfileIdentityRoundTripsSharedOrionHostAndProfileIdentity() throws {
         let identity = OrionProfileIdentity(
-            applicationURL: URL(fileURLWithPath: "/Users/test/Applications/Orion/Orion Profiles/CatalinaWeb.app"),
-            bundleIdentifier: "com.example.CatalinaWeb",
-            localizedName: "CatalinaWeb"
+            applicationURL: URL(fileURLWithPath: "/Applications/Utilities/Orion.app"),
+            bundleIdentifier: "com.kagi.kagimacOS",
+            localizedName: "Orion",
+            profileIdentifier: "PROFILE-ID",
+            profileName: "CatalinaWeb"
         )
 
         let data = try JSONEncoder().encode(identity)
         let decoded = try JSONDecoder().decode(OrionProfileIdentity.self, from: data)
 
         XCTAssertEqual(decoded, identity)
+    }
+
+    func testProfileIdentityDecodesLegacyV2PayloadWithoutProfileFields() throws {
+        let legacyJSON = """
+        {
+          "applicationURL": "file:///Users/test/Applications/Orion/Orion%20Profiles/CatalinaWeb.app/",
+          "bundleIdentifier": "com.example.CatalinaWeb",
+          "localizedName": "CatalinaWeb"
+        }
+        """.data(using: .utf8)!
+
+        let decoded = try JSONDecoder().decode(OrionProfileIdentity.self, from: legacyJSON)
+
+        XCTAssertNil(decoded.profileIdentifier)
+        XCTAssertNil(decoded.profileName)
     }
 }
