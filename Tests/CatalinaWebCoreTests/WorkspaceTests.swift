@@ -8,12 +8,18 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(Workspace.allCases, [.chatGPT, .github])
     }
 
-    func testInitialPersistedStateContainsOnlyDefaults() {
+    func testInitialStateStartsUnconfiguredWithChatGPTHomeFallback() {
         let state = PersistedWorkspaceState.initial
+
         XCTAssertNil(state.lastChatGPTURL)
         XCTAssertNil(state.lastGitHubURL)
         XCTAssertEqual(state.activeWorkspace, .chatGPT)
-        XCTAssertNil(state.windowFrame)
+        XCTAssertNil(state.controllerWindowFrame)
+        XCTAssertNil(state.orionWindowFrame)
+        XCTAssertNil(state.lastChatGPTActivatedAt)
+        XCTAssertNil(state.lastGitHubActivatedAt)
+        XCTAssertEqual(state.setupStage, .notStarted)
+        XCTAssertNil(state.orionProfileIdentity)
     }
 
     func testLastURLHelpersAddressEachWorkspaceIndependently() {
@@ -26,5 +32,17 @@ final class WorkspaceTests: XCTestCase {
 
         XCTAssertEqual(state.lastURL(for: .chatGPT), chatURL)
         XCTAssertEqual(state.lastURL(for: .github), githubURL)
+    }
+
+    func testActivationHelpersAddressEachWorkspaceIndependently() {
+        var state = PersistedWorkspaceState.initial
+        let chatDate = Date(timeIntervalSince1970: 100)
+        let githubDate = Date(timeIntervalSince1970: 200)
+
+        state.markActivated(.chatGPT, at: chatDate)
+        state.markActivated(.github, at: githubDate)
+
+        XCTAssertEqual(state.lastChatGPTActivatedAt, chatDate)
+        XCTAssertEqual(state.lastGitHubActivatedAt, githubDate)
     }
 }
