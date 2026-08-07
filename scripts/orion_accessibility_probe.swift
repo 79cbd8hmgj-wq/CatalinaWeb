@@ -4,6 +4,7 @@ import Foundation
 
 private let maximumTreeDepth = 8
 private let maximumChildrenPerElement = 80
+private let webAreaRole = "AXWebArea"
 private let profileManagerTextAllowlist: Set<String> = [
     "Profiles",
     "Profile",
@@ -341,7 +342,7 @@ private func dumpProfileManagerTree(
     }
 
     let role = stringValue(element, attribute: kAXRoleAttribute as CFString)
-    if role == (kAXWebAreaRole as String) {
+    if role == webAreaRole {
         print("\(prefix)<web area omitted>")
         return
     }
