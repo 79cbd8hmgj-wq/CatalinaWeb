@@ -1,0 +1,38 @@
+Orion Catalina Accessibility Summary
+Captured: 2026-08-07
+OS: macOS Catalina 10.15.7
+Orion bundle identifier: com.kagi.kagimacOS
+Observed Orion bundle URL: /Applications/Utilities/Orion.app
+
+Verified menu structure:
+- File
+  - Profiles
+    - submenu exists, but no child menu items were materialized in the passive capture
+- View
+  - Enable Focus Mode
+    - AX identifier: FocusMode
+- History
+  - Back
+  - Forward
+- View
+  - Reload This Page
+
+Verified browser-window structure:
+- AXWindow / AXStandardWindow present
+- AXToolbar present
+- Accessible navigation controls include left-arrow and right-arrow buttons
+- Current page URL is exposed semantically outside webpage static text
+- Current tab includes an AXTextField whose AXValue is the exact current URL
+- A second accessible URL-bearing element was observed in the window hierarchy
+
+Privacy/redaction notes:
+- Window titles omitted
+- Webpage static text omitted
+- Only URL values were retained from value-bearing elements
+- No credentials, cookies, form contents, message contents, or authentication tokens retained
+
+Task 5 implications:
+- Focus Mode can use the stable AX identifier FocusMode plus semantic menu title verification
+- URL reads can prefer the accessible URL-bearing control rather than clipboard fallback
+- Automatic profile creation is NOT yet proven safe because the Profiles submenu was empty in this passive capture
+- A second passive capture while the user manually opens File > Profiles is required before freezing profile-creation selectors
