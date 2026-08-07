@@ -19,6 +19,7 @@ Verified menu structure:
     - AXChildren count: 0
     - AXVisibleChildren count: 0
     - no semantic profile entries are exposed, even while the submenu is manually visible
+    - zero children was reproduced again after a real secondary profile existed
 - View
   - Enable Focus Mode
     - AX identifier: FocusMode
@@ -36,16 +37,28 @@ Verified browser-window structure:
 - Current tab includes an AXTextField whose URL-bearing value is the exact current URL
 - A second accessible URL-bearing element was observed in the window hierarchy
 
+Verified profile behavior on Orion 1.1.1 / build 149:
+- Profile management is available through Orion Preferences > General > Manage Profiles…
+- A secondary profile named CatalinaWeb can be created manually through the Profiles manager
+- Orion persists profile metadata at ~/Library/Application Support/Orion/profiles
+- Secondary profile metadata contains a stable profile identifier and profile name
+- The secondary profile does not materialize as a separate CatalinaWeb.app bundle
+- Primary and secondary profile windows are hosted by the same Orion application process
+
 Privacy/redaction notes:
 - Window titles omitted
 - Webpage static text omitted
 - Only URL-bearing values were retained from value-bearing elements
+- Concrete user profile UUID omitted from this committed fixture
 - No credentials, cookies, form contents, message contents, or authentication tokens retained
 
 Task 5 capability decisions:
 - Focus Mode: AVAILABLE through verified semantic AX identifier/title evidence.
 - URL read: AVAILABLE through verified URL-bearing AX elements; clipboard fallback remains secondary.
 - Profile-management path: PARTIALLY AVAILABLE (File > Profiles container is semantically exposed).
-- Automatic profile creation: UNAVAILABLE through the verified semantic AX catalog on this Catalina/Orion build. The visible Profiles submenu exposes neither AXChildren nor AXVisibleChildren entries, so there is no stable profile-creation menu item/title to target.
-- Profile-name field and create/confirm control: UNVERIFIED because profile creation cannot be reached through a stable semantic AX selector.
-- Required behavior: return profileCreationUnsupported rather than use coordinates, guessed menu ordering, or invented AX labels.
+- Automatic profile creation or selection through File > Profiles: UNAVAILABLE through the verified semantic AX catalog on this Catalina/Orion build.
+- Profile-name field and create/confirm control: not usable through the approved semantic File > Profiles path.
+- Supported setup path: one-time manual creation of a profile named exactly CatalinaWeb through Preferences > General > Manage Profiles…
+- CatalinaWeb should verify the manually created profile using read-only Orion profile metadata and persist its stable profile identifier.
+- Persisted profile identity must describe the shared Orion host application plus the Orion profile identifier/name; it must not assume a separate profile app bundle.
+- Required behavior: never use coordinates, guessed menu ordering, or invented AX labels for profile creation/selection.
