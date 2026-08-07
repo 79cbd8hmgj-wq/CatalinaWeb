@@ -26,6 +26,18 @@ final class OrionApplicationLocatorTests: XCTestCase {
         try super.tearDownWithError()
     }
 
+    func testDefaultCandidatePathsIncludeCatalinaUtilitiesInstallation() {
+        let home = URL(fileURLWithPath: "/Users/example", isDirectory: true)
+        let candidates = SystemOrionApplicationLocator.defaultCandidateURLs(homeDirectory: home)
+            .map { $0.standardizedFileURL.path }
+
+        XCTAssertEqual(candidates, [
+            "/Applications/Orion.app",
+            "/Applications/Utilities/Orion.app",
+            "/Users/example/Applications/Orion.app"
+        ])
+    }
+
     func testDefaultOrionUsesCandidateOrder() throws {
         let systemCandidate = try makeApplication(
             name: "System Orion",
