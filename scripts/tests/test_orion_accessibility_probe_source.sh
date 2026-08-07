@@ -42,4 +42,15 @@ grep -Fq 'maximumTreeDepth' "$PROBE" \
 grep -Fq 'http' "$PROBE" \
     || fail "probe lacks URL-only value filtering"
 
+# Targeted Profiles diagnostics must remain read-only while exposing alternate
+# semantic AX paths that Orion may use for lazily populated submenus.
+grep -Fq -- '--profiles-detail' "$PROBE" \
+    || fail "probe lacks targeted Profiles diagnostic mode"
+grep -Fq 'AXUIElementCopyAttributeNames' "$PROBE" \
+    || fail "probe does not enumerate available AX attributes"
+grep -Fq 'AXUIElementCopyActionNames' "$PROBE" \
+    || fail "probe does not enumerate advertised AX actions"
+grep -Fq 'kAXVisibleChildrenAttribute' "$PROBE" \
+    || fail "probe does not inspect AXVisibleChildren for lazy menus"
+
 echo "PASS: Orion Accessibility probe source contract"
