@@ -102,4 +102,17 @@ grep -Fq 'AXUIElementIsAttributeSettable' "$PROBE" \
 grep -Fq 'kAXSelectedRowsAttribute' "$PROBE" \
     || fail "probe does not inspect profile-manager selected-row semantics"
 
+# A profile title alone proved ambiguous when CatalinaWeb was active. The
+# selector diagnostic must now inspect semantic state carried by menu items so
+# current-profile and restore-session entries can be distinguished without
+# coordinates or writes.
+grep -Fq 'kAXSelectedAttribute' "$PROBE" \
+    || fail "profile-selector mode does not inspect AXSelected state"
+grep -Fq 'kAXMenuItemMarkCharAttribute' "$PROBE" \
+    || fail "profile-selector mode does not inspect AX menu-item mark state"
+grep -Fq 'kAXMenuItemPrimaryUIElementAttribute' "$PROBE" \
+    || fail "profile-selector mode does not inspect AX menu-item primary UI linkage"
+grep -Fq 'kAXParentAttribute' "$PROBE" \
+    || fail "profile-selector mode does not inspect menu-item parent hierarchy"
+
 echo "PASS: Orion Accessibility probe source contract"
