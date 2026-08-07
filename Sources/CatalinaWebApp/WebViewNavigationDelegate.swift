@@ -42,7 +42,7 @@ final class WebViewNavigationDelegate: NSObject, WKNavigationDelegate {
 
         let decision = decisionForTesting(
             destinationURL: destinationURL,
-            sourceURL: navigationAction.sourceFrame.request.url,
+            sourceURL: webView.url,
             isMainFrame: navigationAction.targetFrame?.isMainFrame ?? true,
             isUserInitiated: Self.isUserInitiated(navigationAction.navigationType)
         )
