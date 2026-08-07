@@ -78,15 +78,15 @@ final class MemoryPressureMonitor: MemoryPressureReading {
 
     private func handleSourceEvent() {
         lock.lock()
-        let event = source?.data
+        let pendingEvent = source?.data
         lock.unlock()
 
-        guard let event = event else {
+        guard let pressureEvent = pendingEvent else {
             return
         }
-        if event.contains(.critical) {
+        if pressureEvent.contains(.critical) {
             record(.critical, scheduleNormalReset: true)
-        } else if event.contains(.warning) {
+        } else if pressureEvent.contains(.warning) {
             record(.warning, scheduleNormalReset: true)
         }
     }
