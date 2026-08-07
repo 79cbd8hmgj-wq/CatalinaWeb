@@ -7,7 +7,18 @@ Observed Orion bundle URL: /Applications/Utilities/Orion.app
 Verified menu structure:
 - File
   - Profiles
-    - submenu exists, but no child menu items were materialized in the passive capture
+    - AX role: AXMenuItem
+    - AX identifier: _NS:773
+    - advertised actions: AXCancel, AXPress
+    - one AX child exists: AXMenu identifier _NS:113
+    - AXVisibleChildren count: 0
+  - Profiles submenu
+    - AX role: AXMenu
+    - AX identifier: _NS:113
+    - advertised actions: AXCancel, AXPress
+    - AXChildren count: 0
+    - AXVisibleChildren count: 0
+    - no semantic profile entries are exposed, even while the submenu is manually visible
 - View
   - Enable Focus Mode
     - AX identifier: FocusMode
@@ -22,17 +33,19 @@ Verified browser-window structure:
 - AXToolbar present
 - Accessible navigation controls include left-arrow and right-arrow buttons
 - Current page URL is exposed semantically outside webpage static text
-- Current tab includes an AXTextField whose AXValue is the exact current URL
+- Current tab includes an AXTextField whose URL-bearing value is the exact current URL
 - A second accessible URL-bearing element was observed in the window hierarchy
 
 Privacy/redaction notes:
 - Window titles omitted
 - Webpage static text omitted
-- Only URL values were retained from value-bearing elements
+- Only URL-bearing values were retained from value-bearing elements
 - No credentials, cookies, form contents, message contents, or authentication tokens retained
 
-Task 5 implications:
-- Focus Mode can use the stable AX identifier FocusMode plus semantic menu title verification
-- URL reads can prefer the accessible URL-bearing control rather than clipboard fallback
-- Automatic profile creation is NOT yet proven safe because the Profiles submenu was empty in this passive capture
-- A second passive capture while the user manually opens File > Profiles is required before freezing profile-creation selectors
+Task 5 capability decisions:
+- Focus Mode: AVAILABLE through verified semantic AX identifier/title evidence.
+- URL read: AVAILABLE through verified URL-bearing AX elements; clipboard fallback remains secondary.
+- Profile-management path: PARTIALLY AVAILABLE (File > Profiles container is semantically exposed).
+- Automatic profile creation: UNAVAILABLE through the verified semantic AX catalog on this Catalina/Orion build. The visible Profiles submenu exposes neither AXChildren nor AXVisibleChildren entries, so there is no stable profile-creation menu item/title to target.
+- Profile-name field and create/confirm control: UNVERIFIED because profile creation cannot be reached through a stable semantic AX selector.
+- Required behavior: return profileCreationUnsupported rather than use coordinates, guessed menu ordering, or invented AX labels.
