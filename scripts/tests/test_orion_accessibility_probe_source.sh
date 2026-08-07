@@ -27,6 +27,13 @@ if grep -Fn 'as? AXUIElement' "$PROBE" >/tmp/catalinaweb-orion-probe-cfcast.txt 
 fi
 rm -f /tmp/catalinaweb-orion-probe-cfcast.txt
 
+if grep -En 'let ([A-Za-z_][A-Za-z0-9_]*) = \1([ ,]| else)' "$PROBE" >/tmp/catalinaweb-orion-probe-shadowing.txt 2>/dev/null; then
+    cat /tmp/catalinaweb-orion-probe-shadowing.txt >&2
+    rm -f /tmp/catalinaweb-orion-probe-shadowing.txt
+    fail "probe uses Swift 5.3-incompatible same-name optional-binding shadowing"
+fi
+rm -f /tmp/catalinaweb-orion-probe-shadowing.txt
+
 grep -Fq 'AXUIElementGetTypeID()' "$PROBE" \
     || fail "probe does not verify CoreFoundation type identity before AXUIElement conversion"
 grep -Fq 'kAXRoleAttribute' "$PROBE" \
