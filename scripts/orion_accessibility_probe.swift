@@ -50,6 +50,24 @@ private func elementsValue(
     copiedValue(element, attribute: attribute) as? [AXUIElement] ?? []
 }
 
+private func attributeNames(of element: AXUIElement) -> [String] {
+    var names: CFArray?
+    let error = AXUIElementCopyAttributeNames(element, &names)
+    guard error == .success, let names = names else {
+        return []
+    }
+    return names as? [String] ?? []
+}
+
+private func actionNames(of element: AXUIElement) -> [String] {
+    var names: CFArray?
+    let error = AXUIElementCopyActionNames(element, &names)
+    guard error == .success, let names = names else {
+        return []
+    }
+    return names as? [String] ?? []
+}
+
 private func urlOnlyValue(_ element: AXUIElement) -> String? {
     guard let raw = stringValue(element, attribute: kAXValueAttribute as CFString),
           let url = URL(string: raw),
@@ -151,6 +169,89 @@ private func dumpTree(
     }
 }
 
+private func firstDescendant(
+    of element: AXUIElement,
+    title: String,
+    maximumDepth: Int
+) -> AXUIElement? {
+    if stringValue(element, attribute: kAXTitleAttribute as CFString) == title {
+        return element
+    }
+    guard maximumDepth > 0 else {
+        return nil
+    }
+    for child in elementsValue(element, attribute: kAXChildrenAttribute as CFString) {
+        if let match = firstDescendant(
+            of: child,
+            title: title,
+            maximumDepth: maximumDepth - 1
+        ) {
+            return match
+        }
+    }
+    return nil
+}
+
+private func printElementList(
+    label: String,
+    elements: [AXUIElement]
+) {
+    print("\(label).count=\(elements.count)")
+    for (index, element) in elements.prefix(maximumChildrenPerElement).enumerated() {
+        print("\(label)[\(index)]=\(elementSummary(element))")
+    }
+}
+
+private func dumpProfilesDetail(menuBar: AXUIElement) {
+    print("=== PROFILES DETAIL ===")
+
+    guard let profilesItem = firstDescendant(
+        of: menuBar,
+        title: "Profiles",
+        maximumDepth: 4
+    ) else {
+        print("profilesItem=<not found>")
+        return
+    }
+
+    print("profilesItem=\(elementSummary(profilesItem))")
+    print("profilesItem.attributes=\(attributeNames(of: profilesItem).sorted().joined(separator: ","))")
+    print("profilesItem.actions=\(actionNames(of: profilesItem).sorted().joined(separator: ","))")
+
+    let itemChildren = elementsValue(
+        profilesItem,
+        attribute: kAXChildrenAttribute as CFString
+    )
+    let itemVisibleChildren = elementsValue(
+        profilesItem,
+        attribute: kAXVisibleChildrenAttribute as CFString
+    )
+    printElementList(label: "profilesItem.children", elements: itemChildren)
+    printElementList(label: "profilesItem.visibleChildren", elements: itemVisibleChildren)
+
+    guard let submenu = itemChildren.first(where: { child in
+        stringValue(child, attribute: kAXRoleAttribute as CFString) == (kAXMenuRole as String)
+    }) else {
+        print("profilesSubmenu=<not found>")
+        return
+    }
+
+    print("profilesSubmenu=\(elementSummary(submenu))")
+    print("profilesSubmenu.attributes=\(attributeNames(of: submenu).sorted().joined(separator: ","))")
+    print("profilesSubmenu.actions=\(actionNames(of: submenu).sorted().joined(separator: ","))")
+
+    let submenuChildren = elementsValue(
+        submenu,
+        attribute: kAXChildrenAttribute as CFString
+    )
+    let submenuVisibleChildren = elementsValue(
+        submenu,
+        attribute: kAXVisibleChildrenAttribute as CFString
+    )
+    printElementList(label: "profilesSubmenu.children", elements: submenuChildren)
+    printElementList(label: "profilesSubmenu.visibleChildren", elements: submenuVisibleChildren)
+}
+
 private func requestedPID() -> pid_t? {
     let arguments = CommandLine.arguments
     guard let index = arguments.firstIndex(of: "--pid"),
@@ -199,15 +300,22 @@ print("maximumTreeDepth=\(maximumTreeDepth)")
 print("values=URL-only; webpage/static text is not printed")
 print("")
 
-print("=== MENU BAR ===")
-if let menuBar = elementValue(
+guard let menuBar = elementValue(
     applicationElement,
     attribute: kAXMenuBarAttribute as CFString
-) {
-    dumpTree(menuBar, depth: 0, prefix: "")
-} else {
+) else {
+    print("=== MENU BAR ===")
     print("<menu bar unavailable>")
+    exit(4)
 }
+
+if CommandLine.arguments.contains("--profiles-detail") {
+    dumpProfilesDetail(menuBar: menuBar)
+    exit(0)
+}
+
+print("=== MENU BAR ===")
+dumpTree(menuBar, depth: 0, prefix: "")
 
 print("")
 print("=== WINDOWS ===")
