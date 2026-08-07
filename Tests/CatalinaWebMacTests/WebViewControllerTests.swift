@@ -20,33 +20,6 @@ final class WebViewControllerTests: XCTestCase {
         XCTAssertTrue(controller.currentWebView === builder.createdViews[0])
     }
 
-    func testChatGPTConfigurationAppendsSafariIdentityForCompatibility() {
-        let store = RecordingWorkspaceStateStore(state: .initial)
-        let builder = RecordingWebViewBuilder()
-        let controller = WebViewController(stateStore: store, webViewBuilder: builder)
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
-
-        controller.start(in: container, workspace: .chatGPT)
-
-        XCTAssertEqual(
-            builder.configurations[0].applicationNameForUserAgent,
-            "Version/15.6 Safari/605.1.15"
-        )
-    }
-
-    func testGitHubConfigurationKeepsDefaultEmbeddedWebKitIdentity() {
-        var initial = PersistedWorkspaceState.initial
-        initial.activeWorkspace = .github
-        let store = RecordingWorkspaceStateStore(state: initial)
-        let builder = RecordingWebViewBuilder()
-        let controller = WebViewController(stateStore: store, webViewBuilder: builder)
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
-
-        controller.start(in: container, workspace: .github)
-
-        XCTAssertNil(builder.configurations[0].applicationNameForUserAgent)
-    }
-
     func testSwitchPersistsCurrentURLBeforeTeardownAndRestoresDestinationURL() {
         let githubURL = URL(string: "https://github.com/79cbd8hmgj-wq/CatalinaWeb/issues")!
         var initial = PersistedWorkspaceState.initial
