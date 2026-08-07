@@ -14,14 +14,20 @@ public struct OrionProfileIdentity: Codable, Equatable {
     public let applicationURL: URL
     public let bundleIdentifier: String?
     public let localizedName: String
+    public let profileIdentifier: String?
+    public let profileName: String?
 
     public init(
         applicationURL: URL,
         bundleIdentifier: String?,
-        localizedName: String
+        localizedName: String,
+        profileIdentifier: String? = nil,
+        profileName: String? = nil
     ) {
         self.applicationURL = applicationURL
         self.bundleIdentifier = bundleIdentifier
         self.localizedName = localizedName
+        self.profileIdentifier = profileIdentifier
+        self.profileName = profileName
     }
 }
