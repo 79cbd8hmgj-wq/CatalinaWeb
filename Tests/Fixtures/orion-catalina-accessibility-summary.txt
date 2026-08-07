@@ -60,11 +60,14 @@ Verified browser profile-selector Accessibility structure:
 - With the browser profile dropdown manually open, the browser remained one AXWindow in the shared Orion process
 - The current browser URL remained semantically readable
 - The open profile selector exposed CatalinaWeb as an AXMenuItem
-- CatalinaWeb profile menu item identifier: restoreSession:
-- CatalinaWeb profile menu item advertised actions: AXCancel, AXPress
-- No coordinate-based discovery was required to identify the CatalinaWeb profile action
-- The targeted probe did not expose a stable popup element through AXChildren while the menu was open, so automation should locate the semantic restoreSession: menu item rather than depend on popup child structure
-- This capture was taken before verifying the inverse selector state while CatalinaWeb itself is active
+- One CatalinaWeb profile menu item used identifier restoreSession:
+- CatalinaWeb profile menu items advertised actions AXCancel and AXPress
+- No coordinate-based discovery was required to identify a CatalinaWeb profile action
+- The targeted probe did not expose a stable popup element through AXChildren while the menu was open, so automation must not depend on popup child structure
+- After manually switching to CatalinaWeb and reopening the selector, CatalinaWeb still appeared rather than yielding a simple inverse Primary marker
+- In the CatalinaWeb-active capture, five CatalinaWeb AXMenuItem matches were visible to the broad application traversal; only one carried identifier restoreSession:
+- Therefore profile title presence, profile-title absence, and a simple inverse-menu rule are not sufficient to prove active profile identity
+- The matching menu items advertise AXSelected, AXMenuItemMarkChar, AXMenuItemPrimaryUIElement, and AXParent attributes; those state/linkage attributes are the next safe evidence path
 
 Privacy/redaction notes:
 - Browser window titles omitted
@@ -85,7 +88,7 @@ Task 5 capability decisions:
 
 Task 6 evidence checkpoint:
 - Profile-manager rows are semantically identifiable but were not shown to be directly actionable.
-- The browser profile selector exposes the dedicated CatalinaWeb profile as a semantic actionable AXMenuItem with identifier restoreSession: and AXPress.
-- This is sufficient evidence for a safe profile-switch action path.
-- Dedicated-window verification still requires the inverse-state capture: after switching to CatalinaWeb, determine whether the selector exposes Primary (or another semantic marker) so CatalinaWeb can prove which profile owns the browser window before navigation/close commands.
-- Until that inverse-state verification is captured, destructive/navigation actions must remain disabled on an ambiguous Orion browser window.
+- The browser profile selector exposes a semantic actionable CatalinaWeb AXMenuItem, including a restoreSession: instance with AXPress, so a safe profile-switch/open action path exists.
+- The proposed inverse selector identity rule is REJECTED: CatalinaWeb menu entries remain visible after CatalinaWeb is active.
+- Dedicated-window verification must instead use stronger semantic state/linkage evidence such as AXSelected, AXMenuItemMarkChar, AXMenuItemPrimaryUIElement, AXParent hierarchy, and/or the Profiles manager Open Windows state.
+- Until one of those signals is verified to distinguish CatalinaWeb from Primary, destructive/navigation actions remain disabled on an ambiguous Orion browser window.
