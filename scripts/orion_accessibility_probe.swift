@@ -51,21 +51,21 @@ private func elementsValue(
 }
 
 private func attributeNames(of element: AXUIElement) -> [String] {
-    var names: CFArray?
-    let error = AXUIElementCopyAttributeNames(element, &names)
-    guard error == .success, let names = names else {
+    var rawNames: CFArray?
+    let error = AXUIElementCopyAttributeNames(element, &rawNames)
+    guard error == .success, let resolvedNames = rawNames else {
         return []
     }
-    return names as? [String] ?? []
+    return resolvedNames as? [String] ?? []
 }
 
 private func actionNames(of element: AXUIElement) -> [String] {
-    var names: CFArray?
-    let error = AXUIElementCopyActionNames(element, &names)
-    guard error == .success, let names = names else {
+    var rawNames: CFArray?
+    let error = AXUIElementCopyActionNames(element, &rawNames)
+    guard error == .success, let resolvedNames = rawNames else {
         return []
     }
-    return names as? [String] ?? []
+    return resolvedNames as? [String] ?? []
 }
 
 private func urlOnlyValue(_ element: AXUIElement) -> String? {
