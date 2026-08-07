@@ -50,78 +50,34 @@ final class OrionApplicationLocatorTests: XCTestCase {
             parent: temporaryDirectory
         )
         let locator = SystemOrionApplicationLocator(
-            defaultOrionCandidates: [systemCandidate, userCandidate],
-            dedicatedProfileCandidates: []
+            defaultOrionCandidates: [systemCandidate, userCandidate]
         )
 
         let located = locator.locateDefaultOrion()
 
-        XCTAssertEqual(located?.url.standardizedFileURL, systemCandidate.standardizedFileURL)
+        XCTAssertEqual(located?.applicationURL.standardizedFileURL, systemCandidate.standardizedFileURL)
         XCTAssertEqual(located?.bundleIdentifier, "com.kagi.kagimacOS")
         XCTAssertEqual(located?.localizedName, "System Orion")
     }
 
-    func testDedicatedLookupRefusesPersistedIdentityWhenBundleIdentifierDoesNotMatch() throws {
-        let dedicated = try makeApplication(
-            name: "CatalinaWeb",
-            bundleIdentifier: "com.kagi.real-profile",
-            parent: temporaryDirectory
-        )
-        let locator = SystemOrionApplicationLocator(
-            defaultOrionCandidates: [],
-            dedicatedProfileCandidates: [dedicated]
-        )
-        let identity = OrionProfileIdentity(
-            applicationURL: dedicated,
-            bundleIdentifier: "com.kagi.wrong-profile",
-            localizedName: "CatalinaWeb"
-        )
-
-        XCTAssertNil(locator.locateDedicatedProfile(matching: identity))
-    }
-
-    func testDedicatedLookupAcceptsMatchingPersistedIdentity() throws {
-        let dedicated = try makeApplication(
-            name: "CatalinaWeb",
-            bundleIdentifier: "com.kagi.catalinaweb-profile",
-            parent: temporaryDirectory
-        )
-        let locator = SystemOrionApplicationLocator(
-            defaultOrionCandidates: [],
-            dedicatedProfileCandidates: [dedicated]
-        )
-        let identity = OrionProfileIdentity(
-            applicationURL: dedicated,
-            bundleIdentifier: "com.kagi.catalinaweb-profile",
-            localizedName: "CatalinaWeb"
-        )
-
-        let located = locator.locateDedicatedProfile(matching: identity)
-
-        XCTAssertEqual(located?.url.standardizedFileURL, dedicated.standardizedFileURL)
-        XCTAssertEqual(located?.localizedName, "CatalinaWeb")
-    }
-
-    func testDedicatedLookupWithoutIdentityUsesOnlyCatalinaWebProfileCandidate() throws {
-        let normal = try makeApplication(
+    func testCoreIdentityAdapterUsesSameSharedOrionHost() throws {
+        let orion = try makeApplication(
             name: "Orion",
-            bundleIdentifier: "com.kagi.normal",
+            bundleIdentifier: "com.kagi.kagimacOS",
             parent: temporaryDirectory
         )
-        let dedicated = try makeApplication(
-            name: "CatalinaWeb",
-            bundleIdentifier: "com.kagi.catalinaweb-profile",
-            parent: temporaryDirectory
-        )
-        let locator = SystemOrionApplicationLocator(
-            defaultOrionCandidates: [normal],
-            dedicatedProfileCandidates: [dedicated]
-        )
+        let locator = SystemOrionApplicationLocator(defaultOrionCandidates: [orion])
 
-        let located = locator.locateDedicatedProfile(matching: nil)
+        let identity = locator.locateDefaultOrionIdentity()
 
-        XCTAssertEqual(located?.url.standardizedFileURL, dedicated.standardizedFileURL)
-        XCTAssertEqual(located?.localizedName, "CatalinaWeb")
+        XCTAssertEqual(
+            identity,
+            OrionApplicationIdentity(
+                applicationURL: orion.standardizedFileURL,
+                bundleIdentifier: "com.kagi.kagimacOS",
+                localizedName: "Orion"
+            )
+        )
     }
 
     private func makeApplication(
