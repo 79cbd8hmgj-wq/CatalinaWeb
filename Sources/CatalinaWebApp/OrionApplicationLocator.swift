@@ -20,11 +20,7 @@ final class SystemOrionApplicationLocator: OrionApplicationLocating {
 
     convenience init(fileManager: FileManager = .default) {
         let home = fileManager.homeDirectoryForCurrentUser
-        let defaultCandidates = [
-            URL(fileURLWithPath: "/Applications/Orion.app", isDirectory: true),
-            home.appendingPathComponent("Applications", isDirectory: true)
-                .appendingPathComponent("Orion.app", isDirectory: true)
-        ]
+        let defaultCandidates = Self.defaultCandidateURLs(homeDirectory: home)
         let dedicatedCandidates = [
             home.appendingPathComponent("Applications", isDirectory: true)
                 .appendingPathComponent("Orion", isDirectory: true)
@@ -36,6 +32,15 @@ final class SystemOrionApplicationLocator: OrionApplicationLocating {
             defaultOrionCandidates: defaultCandidates,
             dedicatedProfileCandidates: dedicatedCandidates
         )
+    }
+
+    static func defaultCandidateURLs(homeDirectory: URL) -> [URL] {
+        [
+            URL(fileURLWithPath: "/Applications/Orion.app", isDirectory: true),
+            URL(fileURLWithPath: "/Applications/Utilities/Orion.app", isDirectory: true),
+            homeDirectory.appendingPathComponent("Applications", isDirectory: true)
+                .appendingPathComponent("Orion.app", isDirectory: true)
+        ]
     }
 
     init(
