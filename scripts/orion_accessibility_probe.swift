@@ -82,6 +82,18 @@ private func actionNames(of element: AXUIElement) -> [String] {
     return resolvedNames as? [String] ?? []
 }
 
+private func attributeIsSettable(
+    _ element: AXUIElement,
+    attribute: CFString
+) -> Bool? {
+    var settable = DarwinBoolean(false)
+    let error = AXUIElementIsAttributeSettable(element, attribute, &settable)
+    guard error == .success else {
+        return nil
+    }
+    return settable.boolValue
+}
+
 private func urlString(_ raw: String?) -> String? {
     guard let raw = raw,
           let url = URL(string: raw),
@@ -210,6 +222,144 @@ private func firstDescendant(
     return nil
 }
 
+private func descendants(
+    of element: AXUIElement,
+    role expectedRole: String,
+    maximumDepth: Int
+) -> [AXUIElement] {
+    guard maximumDepth >= 0 else {
+        return []
+    }
+
+    var matches: [AXUIElement] = []
+    let role = stringValue(element, attribute: kAXRoleAttribute as CFString)
+    if role == expectedRole {
+        matches.append(element)
+    }
+
+    guard maximumDepth > 0, role != webAreaRole else {
+        return matches
+    }
+
+    for child in elementsValue(element, attribute: kAXChildrenAttribute as CFString) {
+        matches.append(contentsOf: descendants(
+            of: child,
+            role: expectedRole,
+            maximumDepth: maximumDepth - 1
+        ))
+    }
+    return matches
+}
+
+private func firstURLBearingDescendant(
+    of element: AXUIElement,
+    maximumDepth: Int
+) -> String? {
+    if let url = urlOnlyValue(element) {
+        return url
+    }
+    guard maximumDepth > 0 else {
+        return nil
+    }
+    let role = stringValue(element, attribute: kAXRoleAttribute as CFString)
+    guard role != webAreaRole else {
+        return nil
+    }
+    for child in elementsValue(element, attribute: kAXChildrenAttribute as CFString) {
+        if let url = firstURLBearingDescendant(
+            of: child,
+            maximumDepth: maximumDepth - 1
+        ) {
+            return url
+        }
+    }
+    return nil
+}
+
+private func profileSemanticMarker(_ raw: String?) -> String? {
+    guard let raw = raw else {
+        return nil
+    }
+    let lowered = raw.lowercased()
+    if lowered.contains("catalinaweb") {
+        return "CatalinaWeb"
+    }
+    if lowered == "primary" || (lowered.contains("primary") && lowered.contains("profile")) {
+        return "Primary"
+    }
+    if lowered.contains("profile") {
+        return "profile-related"
+    }
+    return nil
+}
+
+private func semanticProfileMarker(of element: AXUIElement) -> String? {
+    let attributes: [CFString] = [
+        kAXTitleAttribute as CFString,
+        kAXDescriptionAttribute as CFString,
+        kAXHelpAttribute as CFString,
+        kAXValueAttribute as CFString
+    ]
+    for attribute in attributes {
+        if let marker = profileSemanticMarker(stringValue(element, attribute: attribute)) {
+            return marker
+        }
+    }
+    return nil
+}
+
+private func exactProfileName(in element: AXUIElement, maximumDepth: Int) -> String? {
+    let values: [String?] = [
+        stringValue(element, attribute: kAXTitleAttribute as CFString),
+        stringValue(element, attribute: kAXDescriptionAttribute as CFString),
+        stringValue(element, attribute: kAXValueAttribute as CFString)
+    ]
+    for raw in values {
+        if raw == "CatalinaWeb" || raw == "Primary" {
+            return raw
+        }
+    }
+
+    guard maximumDepth > 0 else {
+        return nil
+    }
+    let role = stringValue(element, attribute: kAXRoleAttribute as CFString)
+    guard role != webAreaRole else {
+        return nil
+    }
+    for child in elementsValue(element, attribute: kAXChildrenAttribute as CFString) {
+        if let name = exactProfileName(in: child, maximumDepth: maximumDepth - 1) {
+            return name
+        }
+    }
+    return nil
+}
+
+private func numericValues(in element: AXUIElement, maximumDepth: Int) -> [String] {
+    var result: [String] = []
+    if let raw = stringValue(element, attribute: kAXValueAttribute as CFString) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if Int(trimmed) != nil {
+            result.append(trimmed)
+        }
+    }
+
+    guard maximumDepth > 0 else {
+        return result
+    }
+    let role = stringValue(element, attribute: kAXRoleAttribute as CFString)
+    guard role != webAreaRole else {
+        return result
+    }
+    for child in elementsValue(element, attribute: kAXChildrenAttribute as CFString) {
+        result.append(contentsOf: numericValues(
+            in: child,
+            maximumDepth: maximumDepth - 1
+        ))
+    }
+    return result
+}
+
 private func printElementList(
     label: String,
     elements: [AXUIElement]
@@ -317,10 +467,13 @@ private func profileManagerElementSummary(_ element: AXUIElement) -> String {
         attribute: kAXValueAttribute as CFString
     ) {
         fields.append("value=\(sanitized(value))")
-    } else if let url = urlString(
-        stringValue(element, attribute: kAXValueAttribute as CFString)
-    ) {
-        fields.append("url=\(sanitized(url))")
+    } else if let rawValue = stringValue(element, attribute: kAXValueAttribute as CFString) {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if Int(trimmed) != nil {
+            fields.append("numericValue=\(trimmed)")
+        } else if let url = urlString(rawValue) {
+            fields.append("url=\(sanitized(url))")
+        }
     }
 
     let actions = actionNames(of: element).sorted()
@@ -359,6 +512,65 @@ private func dumpProfileManagerTree(
     }
 }
 
+private func dumpProfileManagerSelectionEvidence(_ window: AXUIElement) {
+    let outlines = descendants(
+        of: window,
+        role: kAXOutlineRole as String,
+        maximumDepth: maximumTreeDepth
+    )
+    guard let profileOutline = outlines.first(where: { outline in
+        exactProfileName(in: outline, maximumDepth: 4) == "Primary"
+            && descendants(
+                of: outline,
+                role: kAXRowRole as String,
+                maximumDepth: 3
+            ).contains(where: { row in
+                exactProfileName(in: row, maximumDepth: 3) == "CatalinaWeb"
+            })
+    }) else {
+        print("profileOutline=<not found>")
+        return
+    }
+
+    print("profileOutline.attributes=\(attributeNames(of: profileOutline).sorted().joined(separator: ","))")
+    print("profileOutline.actions=\(actionNames(of: profileOutline).sorted().joined(separator: ","))")
+    let selectedRows = elementsValue(
+        profileOutline,
+        attribute: kAXSelectedRowsAttribute as CFString
+    )
+    print("profileOutline.selectedRows.count=\(selectedRows.count)")
+    if let settable = attributeIsSettable(
+        profileOutline,
+        attribute: kAXSelectedRowsAttribute as CFString
+    ) {
+        print("profileOutline.selectedRows.settable=\(settable)")
+    }
+
+    let rows = descendants(
+        of: profileOutline,
+        role: kAXRowRole as String,
+        maximumDepth: 3
+    )
+    for row in rows {
+        guard let name = exactProfileName(in: row, maximumDepth: 3) else {
+            continue
+        }
+        print("profileRow[\(name)].attributes=\(attributeNames(of: row).sorted().joined(separator: ","))")
+        print("profileRow[\(name)].actions=\(actionNames(of: row).sorted().joined(separator: ","))")
+        if let selected = boolValue(row, attribute: kAXSelectedAttribute as CFString) {
+            print("profileRow[\(name)].selected=\(selected)")
+        }
+        if let settable = attributeIsSettable(
+            row,
+            attribute: kAXSelectedAttribute as CFString
+        ) {
+            print("profileRow[\(name)].selected.settable=\(settable)")
+        }
+        let numbers = numericValues(in: row, maximumDepth: 3)
+        print("profileRow[\(name)].numericValues=\(numbers.joined(separator: ","))")
+    }
+}
+
 private func dumpProfileManagerDetail(application: AXUIElement) {
     print("=== PROFILE MANAGER DETAIL ===")
 
@@ -391,12 +603,103 @@ private func dumpProfileManagerDetail(application: AXUIElement) {
         dumpProfileManagerTree(window, depth: 0, prefix: "")
         if isProfileManager {
             foundProfileManager = true
+            dumpProfileManagerSelectionEvidence(window)
         }
     }
 
     if !foundProfileManager {
         print("profileManager=<not found; open Orion Preferences > General > Manage Profiles and retry>")
     }
+}
+
+private func profileSelectorCandidateSummary(_ element: AXUIElement) -> String {
+    var fields: [String] = []
+    fields.append("role=\(stringValue(element, attribute: kAXRoleAttribute as CFString) ?? "<none>")")
+    if let identifier = stringValue(element, attribute: kAXIdentifierAttribute as CFString),
+       !identifier.isEmpty {
+        fields.append("identifier=\(sanitized(identifier))")
+    }
+
+    let semanticAttributes: [(String, CFString)] = [
+        ("title", kAXTitleAttribute as CFString),
+        ("description", kAXDescriptionAttribute as CFString),
+        ("help", kAXHelpAttribute as CFString),
+        ("value", kAXValueAttribute as CFString)
+    ]
+    for pair in semanticAttributes {
+        if let marker = profileSemanticMarker(stringValue(element, attribute: pair.1)) {
+            fields.append("\(pair.0)=\(marker)")
+        }
+    }
+
+    let actions = actionNames(of: element).sorted()
+    if !actions.isEmpty {
+        fields.append("actions=\(actions.joined(separator: ","))")
+    }
+    return fields.joined(separator: " ")
+}
+
+private func dumpProfileSelectorDetail(application: AXUIElement) {
+    print("=== PROFILE SELECTOR DETAIL ===")
+    let windows = elementsValue(application, attribute: kAXWindowsAttribute as CFString)
+    print("windows.count=\(windows.count)")
+
+    var browserCandidateCount = 0
+    for (index, window) in windows.enumerated() {
+        guard let currentURL = firstURLBearingDescendant(
+            of: window,
+            maximumDepth: maximumTreeDepth
+        ) else {
+            continue
+        }
+        browserCandidateCount += 1
+        print("--- browserCandidate \(browserCandidateCount) windowIndex=\(index + 1) ---")
+        print("currentURL=\(sanitized(currentURL))")
+
+        let toolbars = descendants(
+            of: window,
+            role: kAXToolbarRole as String,
+            maximumDepth: maximumTreeDepth
+        )
+        var popupCandidates: [AXUIElement] = []
+        for toolbar in toolbars {
+            popupCandidates.append(contentsOf: descendants(
+                of: toolbar,
+                role: kAXPopUpButtonRole as String,
+                maximumDepth: 5
+            ))
+        }
+        print("popupCandidates.count=\(popupCandidates.count)")
+        for (popupIndex, popup) in popupCandidates.enumerated() {
+            print("popup[\(popupIndex)]=\(profileSelectorCandidateSummary(popup))")
+            print("popup[\(popupIndex)].attributes=\(attributeNames(of: popup).sorted().joined(separator: ","))")
+            let children = elementsValue(popup, attribute: kAXChildrenAttribute as CFString)
+            let visibleChildren = elementsValue(
+                popup,
+                attribute: kAXVisibleChildrenAttribute as CFString
+            )
+            print("popup[\(popupIndex)].children.count=\(children.count)")
+            print("popup[\(popupIndex)].visibleChildren.count=\(visibleChildren.count)")
+        }
+    }
+    print("browserCandidates.count=\(browserCandidateCount)")
+
+    let menuItems = descendants(
+        of: application,
+        role: kAXMenuItemRole as String,
+        maximumDepth: maximumTreeDepth + 2
+    )
+    var profileMenuMatchCount = 0
+    for item in menuItems {
+        guard let marker = semanticProfileMarker(of: item),
+              marker == "CatalinaWeb" || marker == "Primary" else {
+            continue
+        }
+        profileMenuMatchCount += 1
+        print("profileMenuItem[\(profileMenuMatchCount)]=\(profileSelectorCandidateSummary(item))")
+        print("profileMenuItem[\(profileMenuMatchCount)].attributes=\(attributeNames(of: item).sorted().joined(separator: ","))")
+    }
+    print("profileMenuItems.count=\(profileMenuMatchCount)")
 }
 
 private func requestedPID() -> pid_t? {
@@ -449,6 +752,11 @@ print("")
 
 if CommandLine.arguments.contains("--profile-manager-detail") {
     dumpProfileManagerDetail(application: applicationElement)
+    exit(0)
+}
+
+if CommandLine.arguments.contains("--profile-selector-detail") {
+    dumpProfileSelectorDetail(application: applicationElement)
     exit(0)
 }
 
