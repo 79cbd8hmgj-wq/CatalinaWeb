@@ -20,6 +20,15 @@ if grep -En "$PROHIBITED" "$PROBE" >/tmp/catalinaweb-orion-probe-prohibited.txt 
 fi
 rm -f /tmp/catalinaweb-orion-probe-prohibited.txt
 
+if grep -Fn 'as? AXUIElement' "$PROBE" >/tmp/catalinaweb-orion-probe-cfcast.txt 2>/dev/null; then
+    cat /tmp/catalinaweb-orion-probe-cfcast.txt >&2
+    rm -f /tmp/catalinaweb-orion-probe-cfcast.txt
+    fail "probe uses a Swift 5.3-incompatible conditional cast to AXUIElement"
+fi
+rm -f /tmp/catalinaweb-orion-probe-cfcast.txt
+
+grep -Fq 'AXUIElementGetTypeID()' "$PROBE" \
+    || fail "probe does not verify CoreFoundation type identity before AXUIElement conversion"
 grep -Fq 'kAXRoleAttribute' "$PROBE" \
     || fail "probe does not inspect AX roles"
 grep -Fq 'kAXTitleAttribute' "$PROBE" \
