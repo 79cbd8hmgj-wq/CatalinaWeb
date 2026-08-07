@@ -4,6 +4,19 @@ import Foundation
 
 private let maximumTreeDepth = 8
 private let maximumChildrenPerElement = 80
+private let profileManagerTextAllowlist: Set<String> = [
+    "Profiles",
+    "Profile",
+    "Primary",
+    "CatalinaWeb",
+    "Open Windows",
+    "Is Default",
+    "Synced",
+    "New Profile...",
+    "New Profile…",
+    "Manage Profiles...",
+    "Manage Profiles…"
+]
 
 private func copiedValue(
     _ element: AXUIElement,
@@ -68,14 +81,18 @@ private func actionNames(of element: AXUIElement) -> [String] {
     return resolvedNames as? [String] ?? []
 }
 
-private func urlOnlyValue(_ element: AXUIElement) -> String? {
-    guard let raw = stringValue(element, attribute: kAXValueAttribute as CFString),
+private func urlString(_ raw: String?) -> String? {
+    guard let raw = raw,
           let url = URL(string: raw),
           let scheme = url.scheme?.lowercased(),
           scheme == "http" || scheme == "https" else {
         return nil
     }
     return raw
+}
+
+private func urlOnlyValue(_ element: AXUIElement) -> String? {
+    urlString(stringValue(element, attribute: kAXValueAttribute as CFString))
 }
 
 private func shouldPrintSemanticText(for role: String?) -> Bool {
@@ -252,6 +269,135 @@ private func dumpProfilesDetail(menuBar: AXUIElement) {
     printElementList(label: "profilesSubmenu.visibleChildren", elements: submenuVisibleChildren)
 }
 
+private func allowlistedProfileManagerText(
+    _ element: AXUIElement,
+    attribute: CFString
+) -> String? {
+    guard let raw = stringValue(element, attribute: attribute),
+          profileManagerTextAllowlist.contains(raw) else {
+        return nil
+    }
+    return raw
+}
+
+private func profileManagerElementSummary(_ element: AXUIElement) -> String {
+    let role = stringValue(element, attribute: kAXRoleAttribute as CFString)
+    let subrole = stringValue(element, attribute: kAXSubroleAttribute as CFString)
+    let identifier = stringValue(element, attribute: kAXIdentifierAttribute as CFString)
+    let enabled = boolValue(element, attribute: kAXEnabledAttribute as CFString)
+
+    var fields: [String] = []
+    fields.append("role=\(role ?? "<none>")")
+
+    if let subrole = subrole, !subrole.isEmpty {
+        fields.append("subrole=\(sanitized(subrole))")
+    }
+    if let identifier = identifier, !identifier.isEmpty {
+        fields.append("identifier=\(sanitized(identifier))")
+    }
+    if let enabled = enabled {
+        fields.append("enabled=\(enabled)")
+    }
+
+    if let title = allowlistedProfileManagerText(
+        element,
+        attribute: kAXTitleAttribute as CFString
+    ) {
+        fields.append("title=\(sanitized(title))")
+    }
+    if let description = allowlistedProfileManagerText(
+        element,
+        attribute: kAXDescriptionAttribute as CFString
+    ) {
+        fields.append("description=\(sanitized(description))")
+    }
+    if let value = allowlistedProfileManagerText(
+        element,
+        attribute: kAXValueAttribute as CFString
+    ) {
+        fields.append("value=\(sanitized(value))")
+    } else if let url = urlString(
+        stringValue(element, attribute: kAXValueAttribute as CFString)
+    ) {
+        fields.append("url=\(sanitized(url))")
+    }
+
+    let actions = actionNames(of: element).sorted()
+    if !actions.isEmpty {
+        fields.append("actions=\(actions.joined(separator: ","))")
+    }
+
+    return fields.joined(separator: " ")
+}
+
+private func dumpProfileManagerTree(
+    _ element: AXUIElement,
+    depth: Int,
+    prefix: String
+) {
+    guard depth <= maximumTreeDepth else {
+        print("\(prefix)<maximum depth reached>")
+        return
+    }
+
+    let role = stringValue(element, attribute: kAXRoleAttribute as CFString)
+    if role == (kAXWebAreaRole as String) {
+        print("\(prefix)<web area omitted>")
+        return
+    }
+
+    print("\(prefix)\(profileManagerElementSummary(element))")
+
+    let children = elementsValue(element, attribute: kAXChildrenAttribute as CFString)
+    if children.count > maximumChildrenPerElement {
+        print("\(prefix)  <children truncated: \(children.count) total>")
+    }
+
+    for child in children.prefix(maximumChildrenPerElement) {
+        dumpProfileManagerTree(child, depth: depth + 1, prefix: prefix + "  ")
+    }
+}
+
+private func dumpProfileManagerDetail(application: AXUIElement) {
+    print("=== PROFILE MANAGER DETAIL ===")
+
+    if let focusedWindow = elementValue(
+        application,
+        attribute: kAXFocusedWindowAttribute as CFString
+    ) {
+        print("focusedWindow=\(profileManagerElementSummary(focusedWindow))")
+    } else {
+        print("focusedWindow=<unavailable>")
+    }
+
+    if let mainWindow = elementValue(
+        application,
+        attribute: kAXMainWindowAttribute as CFString
+    ) {
+        print("mainWindow=\(profileManagerElementSummary(mainWindow))")
+    } else {
+        print("mainWindow=<unavailable>")
+    }
+
+    let windows = elementsValue(application, attribute: kAXWindowsAttribute as CFString)
+    print("windows.count=\(windows.count)")
+
+    var foundProfileManager = false
+    for (index, window) in windows.enumerated() {
+        let rawTitle = stringValue(window, attribute: kAXTitleAttribute as CFString)
+        let isProfileManager = rawTitle == "Profiles"
+        print("--- window \(index + 1) profileManager=\(isProfileManager) ---")
+        dumpProfileManagerTree(window, depth: 0, prefix: "")
+        if isProfileManager {
+            foundProfileManager = true
+        }
+    }
+
+    if !foundProfileManager {
+        print("profileManager=<not found; open Orion Preferences > General > Manage Profiles and retry>")
+    }
+}
+
 private func requestedPID() -> pid_t? {
     let arguments = CommandLine.arguments
     guard let index = arguments.firstIndex(of: "--pid"),
@@ -299,6 +445,11 @@ print("bundleURL=\(orion.bundleURL?.path ?? "<unknown>")")
 print("maximumTreeDepth=\(maximumTreeDepth)")
 print("values=URL-only; webpage/static text is not printed")
 print("")
+
+if CommandLine.arguments.contains("--profile-manager-detail") {
+    dumpProfileManagerDetail(application: applicationElement)
+    exit(0)
+}
 
 guard let menuBar = elementValue(
     applicationElement,
