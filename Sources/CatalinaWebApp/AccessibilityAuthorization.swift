@@ -1,9 +1,9 @@
 import AppKit
 import ApplicationServices
+import CatalinaWebCore
 import Foundation
 
-protocol AccessibilityAuthorizing: AnyObject {
-    var isTrusted: Bool { get }
+protocol AccessibilityAuthorizing: OrionAccessibilityTrustChecking {
     func requestTrustPrompt()
     func openAccessibilityPreferences()
 }
