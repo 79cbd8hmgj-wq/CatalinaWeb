@@ -36,7 +36,7 @@ Verified browser-window structure:
 - Current page URL is exposed semantically outside webpage static text
 - Current tab includes an AXTextField whose URL-bearing value is the exact current URL
 - A second accessible URL-bearing element was observed in the window hierarchy
-- A browser toolbar AXPopUpButton is present and advertises AXPress and AXShowMenu; Task 6 must verify whether this is Orion's profile selector before using it
+- A browser toolbar AXPopUpButton is present and advertises AXPress and AXShowMenu
 
 Verified profile behavior on Orion 1.1.1 / build 149:
 - Profile management is available through Orion Preferences > General > Manage Profiles…
@@ -55,7 +55,16 @@ Verified Profiles-manager Accessibility structure:
 - The captured CatalinaWeb and Primary rows did not advertise AXPress themselves
 - Preferences > General also exposes Manage Profiles… as an AXButton advertising AXPress
 - Preferences > General exposes the current default profile as an AXPopUpButton value Primary
-- One browser window in the same Orion process exposed an exact ChatGPT URL and a toolbar AXPopUpButton advertising AXPress and AXShowMenu
+
+Verified browser profile-selector Accessibility structure:
+- With the browser profile dropdown manually open, the browser remained one AXWindow in the shared Orion process
+- The current browser URL remained semantically readable
+- The open profile selector exposed CatalinaWeb as an AXMenuItem
+- CatalinaWeb profile menu item identifier: restoreSession:
+- CatalinaWeb profile menu item advertised actions: AXCancel, AXPress
+- No coordinate-based discovery was required to identify the CatalinaWeb profile action
+- The targeted probe did not expose a stable popup element through AXChildren while the menu was open, so automation should locate the semantic restoreSession: menu item rather than depend on popup child structure
+- This capture was taken before verifying the inverse selector state while CatalinaWeb itself is active
 
 Privacy/redaction notes:
 - Browser window titles omitted
@@ -75,6 +84,8 @@ Task 5 capability decisions:
 - Required behavior: never use coordinates, guessed menu ordering, or invented AX labels for profile creation/selection.
 
 Task 6 evidence checkpoint:
-- Profile-manager rows are semantically identifiable but were not yet shown to be directly actionable.
-- A toolbar AXPopUpButton exists in the browser window and is the preferred next identity path because Orion documentation describes a toolbar profile switcher.
-- Do not claim or use that popup as the profile selector until a targeted Catalina capture verifies its semantic profile marker and/or profile menu entries.
+- Profile-manager rows are semantically identifiable but were not shown to be directly actionable.
+- The browser profile selector exposes the dedicated CatalinaWeb profile as a semantic actionable AXMenuItem with identifier restoreSession: and AXPress.
+- This is sufficient evidence for a safe profile-switch action path.
+- Dedicated-window verification still requires the inverse-state capture: after switching to CatalinaWeb, determine whether the selector exposes Primary (or another semantic marker) so CatalinaWeb can prove which profile owns the browser window before navigation/close commands.
+- Until that inverse-state verification is captured, destructive/navigation actions must remain disabled on an ambiguous Orion browser window.
