@@ -23,6 +23,8 @@ final class DefaultWebViewBuilder: WebViewBuilding {
 }
 
 final class WebViewController: WebViewControlling {
+    private static let chatGPTCompatibilityUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15"
+
     private let stateStore: WorkspaceStateStoring
     private let webViewBuilder: WebViewBuilding
     private let navigationPolicy: NavigationPolicy
@@ -155,6 +157,9 @@ final class WebViewController: WebViewControlling {
         configuration.websiteDataStore = WKWebsiteDataStore.default()
 
         let webView = webViewBuilder.makeWebView(configuration: configuration)
+        if workspace == .chatGPT {
+            webView.customUserAgent = Self.chatGPTCompatibilityUserAgent
+        }
         webView.translatesAutoresizingMaskIntoConstraints = false
         containerView.addSubview(webView)
         NSLayoutConstraint.activate([
